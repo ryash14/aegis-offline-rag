@@ -1,0 +1,16 @@
+[project]
+name = "aegis-local-rag"
+version = "0.2.0"
+description = "Local evidence retrieval with reproducible BEIR evaluation"
+requires-python = ">=3.12"
+dependencies = ["numpy", "pymupdf", "sentence-transformers", "psutil"]
+[project.optional-dependencies]
+dev = ["pytest"]
+ui = ["streamlit"]
+[project.scripts]
+aegis = "aegis.cli:main"
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools.packages.find]
+include = ["aegis*"]

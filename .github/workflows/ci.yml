@@ -1,0 +1,22 @@
+name: Local RAG checks
+on: [push, pull_request]
+jobs:
+  unit-and-ingestion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+      - run: python -m pip install -r requirements.lock.txt --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install ruff==0.17.1
+      - run: ruff check aegis scripts tests app.py --select F
+      - run: ruff format --check aegis scripts tests app.py
+      - run: python -m pytest -q
+        env:
+          HF_HUB_OFFLINE: '1'
+          TRANSFORMERS_OFFLINE: '1'
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '4'

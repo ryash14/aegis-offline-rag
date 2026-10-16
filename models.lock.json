@@ -1,0 +1,18 @@
+{
+  "encoder": {
+    "repository": "sentence-transformers/all-MiniLM-L6-v2",
+    "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+  },
+  "reader": {
+    "repository": "deepset/minilm-uncased-squad2",
+    "revision": "934656cdda79824eabf503ed56e15c01ddbdbe3f"
+  },
+  "verifier": {
+    "repository": "deepset/tinyroberta-squad2",
+    "revision": "12b287c9df677e28b07f0a023850dba68c997dbf"
+  },
+  "reranker": {
+    "repository": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "revision": "233902d25c440f23af6f7d6e94d2946bac0bee0a"
+  }
+}
