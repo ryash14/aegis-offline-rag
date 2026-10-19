@@ -6,7 +6,15 @@ For private document work, retrieval quality and inspectable evidence matter as 
 
 [![CI](https://github.com/ryash14/aegis-offline-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/ryash14/aegis-offline-rag/actions/workflows/ci.yml)
 
-[Quick start](#quick-start) · [How it works](#how-it-works) · [Development](#development) · [Contributing](CONTRIBUTING.md)
+[Quick start](#quick-start) · [Architecture](#architecture-and-request-flow) · [Development](#development) · [Contributing](CONTRIBUTING.md)
+
+## Capabilities
+
+| Workflow | Result |
+|---|---|
+| Index documents | Incremental local ingestion with source metadata and transactional replacement. |
+| Find evidence | Combine BM25 and dense ranks without an external retrieval API. |
+| Read or abstain | Return inspectable source spans with evidence revision and audit state. |
 
 ## Quick start
 
@@ -43,14 +51,14 @@ Once the index and reader assets are staged:
 
 The question is an example: the result depends on your indexed documents. A useful outcome may be an abstention when the evidence does not contain the answer. Backups preserve the index; they do not securely erase deleted source content from other copies.
 
-## How it works
+## Architecture and request flow
 
 1. Stage the pinned encoder and reader models, then ingest a document directory.
 2. Search through Streamlit or the CLI. Retrieval combines BM25 with exact dense search.
 3. Inspect the answer span, page, passage identity and evidence revision.
 4. Use the doctor, audit and backup commands to inspect and preserve the local index.
 
-### Component boundaries
+### Component model
 
 ```mermaid
 flowchart TB
@@ -66,7 +74,7 @@ flowchart TB
     Answer --> Audit["Source offsets, evidence revision and audit"]
 ```
 
-### Design decisions
+### Engineering decisions
 
 SQLite holds passages, full-text search metadata, index revisions and audit records. Dense retrieval uses local embeddings; reciprocal rank fusion combines ranks rather than adding incomparable similarity scores. Transactional replacement preserves the previous document if a new ingestion fails.
 
