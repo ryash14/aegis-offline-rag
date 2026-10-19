@@ -7,19 +7,23 @@
 ```mermaid
 %%{init: {'theme': 'dark'}}%%
 flowchart TD
-    N0["PDF Markdown and text"]
-    N1["OCR and incremental ingestion"]
-    N2["Transactional SQLite index"]
-    N3["BM25 and dense candidates"]
-    N4["Reciprocal rank fusion"]
-    N5["Local extractive reader"]
-    N6["Answer spans and source offsets"]
-    N0 --> N1
-    N1 --> N2
-    N2 --> N3
-    N3 --> N4
-    N4 --> N5
-    N5 --> N6
+    D[PDF / Markdown / UTF-8 text] --> P[Bounded parsing: native text, optional local OCR and table rows]
+    P --> H[Source bytes, parser settings and document SHA-256]
+    H --> I[Local MiniLM embeddings]
+    I --> TX[Atomic SQLite transaction: passages, FTS, metadata, revision, audit]
+    Q[Question] --> S[Consistent read snapshot and revision-aware cache]
+    TX --> S
+    S --> R[BM25 + exact dense search + reciprocal rank fusion]
+    R --> TOP[Top five passages]
+    TOP --> B[Balanced: compact extractive reader]
+    TOP --> C[Cautious: calibrated margin + second-reader agreement]
+    C --> G[Model, corpus and retrieval-policy binding]
+    B --> O[Exact answer span or abstention + offsets + source page]
+    G --> O
+    TOP --> L[Optional experimental local LLM]
+    L --> J[Schema-constrained JSON and source-label checks]
+    J --> O
+    O --> A[Request ID, evidence revision and hashed audit event]
 ```
 
 ### 🛠️ Production Stack
