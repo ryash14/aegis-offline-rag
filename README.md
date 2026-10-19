@@ -1,44 +1,18 @@
 # AEGIS — Offline RAG
 
-> `CPU-capable local document retrieval with extractive answers and traceable evidence.`
+AEGIS Offline RAG searches local documents and returns extractive answers with source pages and character offsets.
 
-### 🏗️ System Architecture
+For private document work, retrieval quality and inspectable evidence matter as much as fluent generation. This implementation uses lexical and dense retrieval with a compact local reader. It can return an exact passage span or abstain, without requiring an external inference API after assets have been staged.
 
-```mermaid
-%%{init: {'theme': 'dark'}}%%
-flowchart TD
-    D[PDF / Markdown / UTF-8 text] --> P[Bounded parsing: native text, optional local OCR and table rows]
-    P --> H[Source bytes, parser settings and document SHA-256]
-    H --> I[Local MiniLM embeddings]
-    I --> TX[Atomic SQLite transaction: passages, FTS, metadata, revision, audit]
-    Q[Question] --> S[Consistent read snapshot and revision-aware cache]
-    TX --> S
-    S --> R[BM25 + exact dense search + reciprocal rank fusion]
-    R --> TOP[Top five passages]
-    TOP --> B[Balanced: compact extractive reader]
-    TOP --> C[Cautious: calibrated margin + second-reader agreement]
-    C --> G[Model, corpus and retrieval-policy binding]
-    B --> O[Exact answer span or abstention + offsets + source page]
-    G --> O
-    TOP --> L[Optional experimental local LLM]
-    L --> J[Schema-constrained JSON and source-label checks]
-    J --> O
-    O --> A[Request ID, evidence revision and hashed audit event]
-```
+[![CI](https://github.com/ryash14/aegis-offline-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/ryash14/aegis-offline-rag/actions/workflows/ci.yml)
 
-### 🛠️ Production Stack
+[Quick start](#quick-start) · [How it works](#how-it-works) · [Development](#development) · [Contributing](CONTRIBUTING.md)
 
-Python 3.12 · Streamlit · PyMuPDF · sentence-transformers · PyTorch CPU · BM25 · SQLite · optional Ollama
+## Quick start
 
-### ⚡ Key Engineering Capabilities
+Use Python 3.12 and uv. Install Tesseract for OCR. Setup requires network access for models and the supplied evaluation dataset; inference operates on staged local files. Policies calibrated on one corpus do not automatically transfer to another.
 
-- Hybrid sparse/dense search combines complementary retrieval signals.
-- Transactional replacement preserves the previous document if ingestion fails.
-- Reader spans, audit records and backup commands expose evidence and index state.
-
-### 🚀 Deployment and Local Setup
-
-Run from the repository root after cloning:
+From a fresh checkout:
 
 ```bash
 git clone https://github.com/ryash14/aegis-offline-rag.git
@@ -56,17 +30,71 @@ curl -4 -fL https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/s
 
 Install Tesseract for OCR. Setup downloads model weights and public evaluation data; runtime uses staged local assets. Open http://127.0.0.1:8501. Optional second-reader agreement requires separately staged weights and corpus-bound policies. Supported deployment is one trusted local user. Experimental Ollama generation is optional.
 
-### Verification
+## CLI workflow
+
+Once the index and reader assets are staged:
+
+```bash
+.venv/bin/python -m aegis.cli --db data/documents.sqlite search 'When must the valve be inspected?' --reader
+.venv/bin/python -m aegis.cli --db data/documents.sqlite doctor
+.venv/bin/python -m aegis.cli --db data/documents.sqlite audit
+.venv/bin/python -m aegis.cli --db data/documents.sqlite backup data/backups/documents.sqlite
+```
+
+The question is an example: the result depends on your indexed documents. A useful outcome may be an abstention when the evidence does not contain the answer. Backups preserve the index; they do not securely erase deleted source content from other copies.
+
+## How it works
+
+1. Stage the pinned encoder and reader models, then ingest a document directory.
+2. Search through Streamlit or the CLI. Retrieval combines BM25 with exact dense search.
+3. Inspect the answer span, page, passage identity and evidence revision.
+4. Use the doctor, audit and backup commands to inspect and preserve the local index.
+
+### Component boundaries
+
+```mermaid
+flowchart TB
+    Files["Local documents"] --> Ingest["Parse, chunk and embed"]
+    Ingest --> DB[("SQLite passages, FTS and revisions")]
+    Query["Question"] --> Retrieval["Snapshot-consistent BM25 and dense search"]
+    DB --> Retrieval
+    Retrieval --> Fusion["Reciprocal rank fusion"]
+    Fusion --> Reader["Local extractive reader"]
+    Reader --> Answer["Exact span or abstention"]
+    Reader --> Policy["Optional second reader and bound policy"]
+    Policy --> Answer
+    Answer --> Audit["Source offsets, evidence revision and audit"]
+```
+
+### Design decisions
+
+SQLite holds passages, full-text search metadata, index revisions and audit records. Dense retrieval uses local embeddings; reciprocal rank fusion combines ranks rather than adding incomparable similarity scores. Transactional replacement preserves the previous document if a new ingestion fails.
+
+Balanced mode uses a compact extractive reader. Cautious mode adds a separately staged reader and a policy bound to model, corpus and retrieval settings. Agreement and exact-span checks improve inspectability; they do not prove that an answer is correct. Optional Ollama generation is experimental.
+
+## Implementation
+
+**Stack:** Python 3.12 · Streamlit · PyMuPDF · sentence-transformers · PyTorch CPU · BM25 · SQLite · optional Ollama.
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- [models.lock.json](models.lock.json)
+
+## Development
+
+Run the repository checks after completing setup:
 
 ```bash
 make test
 make check
 ```
 
-These commands are provided by the source configuration; this documentation update does not claim a fresh end-to-end application run.
+Use the offline checks during development. Run provider-backed integration checks separately with configured credentials and representative inputs.
 
-### Source Map
+## Contributing and support
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
-- [models.lock.json](models.lock.json)
+Report reproducible bugs or propose changes through [GitHub Issues](https://github.com/ryash14/aegis-offline-rag/issues). Include the relevant environment and a small example rather than private datasets or credentials. See [contributing](CONTRIBUTING.md), [security reporting](SECURITY.md) and the [code of conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+No repository-wide license is currently provided. Third-party components, models and datasets retain their own terms.
