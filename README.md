@@ -82,6 +82,8 @@ Balanced mode uses a compact extractive reader. Cautious mode adds a separately 
 
 ## Development
 
+The hosted ingestion suite currently stops during collection because `tests/test_ingestion.py` imports `scripts.build_fixtures`, which is absent from the repository. The commands below describe the development workflow, but the published CI result is not a passing test guarantee until that fixture builder is restored or the test setup is corrected.
+
 Run the repository checks after completing setup:
 
 ```bash
