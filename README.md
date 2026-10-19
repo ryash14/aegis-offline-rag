@@ -1,21 +1,44 @@
-# AEGIS — Offline Document Intelligence
+# AEGIS — Offline RAG
 
-A local, CPU-capable RAG workbench for searching PDFs, Markdown and text files and answering questions with traceable document evidence. Setup downloads model weights; runtime uses local models without external APIs.
+> `CPU-capable local document retrieval with extractive answers and traceable evidence.`
 
-## Features
+### 🏗️ System Architecture
 
-- Hybrid BM25 and dense retrieval combined with reciprocal rank fusion.
-- Compact extractive reader with exact answer spans, page references and source offsets.
-- Optional two-reader agreement with corpus-bound calibrated policies. Policy artifacts are not included; Balanced mode works without them.
-- Local OCR and table extraction, incremental ingestion and per-file error reporting.
-- Transactional SQLite indexing, revision-aware caches, consistent backups and hash-chained audit records.
-- Streamlit interface and command-line tools; optional experimental Ollama generation.
+```mermaid
+%%{init: {'theme': 'dark'}}%%
+flowchart TD
+    N0["PDF Markdown and text"]
+    N1["OCR and incremental ingestion"]
+    N2["Transactional SQLite index"]
+    N3["BM25 and dense candidates"]
+    N4["Reciprocal rank fusion"]
+    N5["Local extractive reader"]
+    N6["Answer spans and source offsets"]
+    N0 --> N1
+    N1 --> N2
+    N2 --> N3
+    N3 --> N4
+    N4 --> N5
+    N5 --> N6
+```
 
-## Setup
+### 🛠️ Production Stack
 
-Use Python 3.12 and `uv`. Install Tesseract with English language data for OCR.
+Python 3.12 · Streamlit · PyMuPDF · sentence-transformers · PyTorch CPU · BM25 · SQLite · optional Ollama
+
+### ⚡ Key Engineering Capabilities
+
+- Hybrid sparse/dense search combines complementary retrieval signals.
+- Transactional replacement preserves the previous document if ingestion fails.
+- Reader spans, audit records and backup commands expose evidence and index state.
+
+### 🚀 Deployment and Local Setup
+
+Run from the repository root after cloning:
 
 ```bash
+git clone https://github.com/ryash14/aegis-offline-rag.git
+cd aegis-offline-rag
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -r requirements.lock.txt --extra-index-url https://download.pytorch.org/whl/cpu
 uv pip install --python .venv/bin/python -e '.[ui,dev]'
@@ -23,41 +46,23 @@ mkdir -p data models reports
 curl -4 -fL https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/scifact.zip -o data/scifact.zip
 .venv/bin/python scripts/prepare.py
 .venv/bin/python scripts/stage_reader.py
-# Optional second reader:
-.venv/bin/python scripts/stage_verifier.py
-```
-
-`prepare.py` stages pinned encoder/reranker models and extracts the public SciFact archive. Model revisions are recorded in `models.lock.json`. Weights and datasets are not distributed in this repository. Observe upstream model and dataset licenses when staging or redistributing assets.
-
-## Index and run
-
-```bash
 .venv/bin/python -m aegis.cli --db data/documents.sqlite ingest /absolute/path/to/documents
-# Add --ocr --tables when needed.
 ./scripts/run-local.sh
-# Open http://127.0.0.1:8501 and select My documents.
 ```
 
-Or query from the terminal:
+Install Tesseract for OCR. Setup downloads model weights and public evaluation data; runtime uses staged local assets. Open http://127.0.0.1:8501. Optional second-reader agreement requires separately staged weights and corpus-bound policies. Supported deployment is one trusted local user. Experimental Ollama generation is optional.
 
-```bash
-.venv/bin/python -m aegis.cli --db data/documents.sqlite search 'When must the valve be inspected?' --reader
-.venv/bin/python -m aegis.cli --db data/documents.sqlite doctor
-.venv/bin/python -m aegis.cli --db data/documents.sqlite audit
-.venv/bin/python -m aegis.cli --db data/documents.sqlite backup data/backups/documents.sqlite
-```
-
-PDF, Markdown and UTF-8 text are supported. Failed replacements preserve the previous indexed document. Optional `--sync` prunes missing indexed documents within the specified folder after an error-free scan.
-
-## Development
+### Verification
 
 ```bash
 make test
 make check
 ```
 
-Tests that require unstaged neural models or public indexes skip when those assets are absent. Interview notes, evaluation reports, experiment scripts, model weights and local runtime data are excluded from this repository.
+These commands are provided by the source configuration; this documentation update does not claim a fresh end-to-end application run.
 
-See [architecture](docs/ARCHITECTURE.md) and [deployment](docs/DEPLOYMENT.md) for design and operational details.
+### Source Map
 
-The supported scope is one trusted local user. Runtime offline flags and loopback binding do not enforce OS-level network isolation. Authentication, document ACLs and encryption at rest are not implemented. Exact source spans can still answer a question incorrectly. Hash-chained audit records require a trusted external checkpoint to detect full-chain replacement. The optional generative path is experimental.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- [models.lock.json](models.lock.json)
